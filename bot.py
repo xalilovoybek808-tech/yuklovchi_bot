@@ -8,7 +8,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 import yt_dlp
 
 # ========== SOZLAMALAR ==========
-BOT_TOKEN = "8634149578:AAHXnAsRP0BkNKuqXcKkqmJhghMrAY3gF40"
+BOT_TOKEN = "8652149149:AAHKo1FFqXzq58KUeYyFi1yROZjvURAha54"
 DOWNLOAD_DIR = "downloads"
 MAX_FILE_SIZE = 50 * 1024 * 1024  # Telegram limiti 50MB
 
@@ -31,6 +31,8 @@ def detect_platform(url: str) -> Optional[str]:
         return "facebook"
     elif re.search(r"(youtube\.com|youtu\.be|youtube\.com/shorts)", url):
         return "youtube"
+    elif re.search(r"(tiktok\.com|vm\.tiktok\.com)", url):
+        return "tiktok"
     return None
 
 
@@ -49,11 +51,16 @@ def download_video(url: str, platform: str) -> Optional[str]:
 
     ydl_opts = {
         "outtmpl": os.path.join(DOWNLOAD_DIR, "%(title).50s.%(ext)s"),
-        "format": "best",
+        "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+        "merge_output_format": "mp4",
         "noplaylist": True,
         "quiet": True,
         "no_warnings": True,
         "socket_timeout": 30,
+        "postprocessors": [{
+            "key": "FFmpegVideoConvertor",
+            "preferedformat": "mp4",
+        }],
     }
 
     try:
@@ -122,7 +129,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Menga quyidagi platformalardan havola yuboring:\n"
         "• YouTube (video yoki audio)\n"
         "• Instagram (reels, post)\n"
-        "• Facebook (video)\n\n"
+        "• Facebook (video)\n"
+        "• TikTok (video)\n\n"
         "📌 YouTube havolasi bo'lsa, video yoki audio tanlash tugmalari chiqadi.\n"
         "📌 Instagram/Facebook havolasi bo'lsa, avtomatik yuklab beraman.\n\n"
         "Havola yuboring! 👇"
@@ -132,7 +140,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "📖 Foydalanish:\n\n"
-        "1. YouTube, Instagram yoki Facebook havolasini yuboring\n"
+        "1. YouTube, Instagram, Facebook yoki TikTok havolasini yuboring\n"
         "2. YouTube uchun /video yoki /audio buyrug'ini ishlating\n"
         "3. Bot avtomatik yuklab beradi\n\n"
         "⚠️ Fayl hajmi 50MB dan oshmasligi kerak."
@@ -167,8 +175,9 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Instagram va Facebook uchun avtomatik video yuklash
-    platform_name = "Instagram" if platform == "instagram" else "Facebook"
+    # Instagram, Facebook va TikTok uchun avtomatik video yuklash
+    platform_names = {"instagram": "Instagram", "facebook": "Facebook", "tiktok": "TikTok"}
+    platform_name = platform_names[platform]
     msg = await update.message.reply_text(f"⏳ {platform_name} dan yuklab olinmoqda...")
 
     filepath = download_video(url, platform)
@@ -189,7 +198,7 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
         with open(filepath, "rb") as f:
             await update.message.reply_video(
                 video=f,
-                caption=f"✅ {platform_name} dan yuklandi | @yuklovchi_bot"
+                caption=f"✅ {platform_name} dan yuklandi | @vidomaxbot"
             )
         await msg.delete()
     except Exception as e:
@@ -226,7 +235,7 @@ async def video_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         with open(filepath, "rb") as f:
             await update.message.reply_video(
                 video=f,
-                caption="✅ YouTube dan yuklandi | @yuklovchi_bot"
+                caption="✅ YouTube dan yuklandi | @vidomaxbot"
             )
         await msg.delete()
     except Exception as e:
@@ -263,7 +272,7 @@ async def audio_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         with open(filepath, "rb") as f:
             await update.message.reply_audio(
                 audio=f,
-                caption="🎵 YouTube dan yuklandi | @yuklovchi_bot"
+                caption="🎵 YouTube dan yuklandi | @vidomaxbot"
             )
         await msg.delete()
     except Exception as e:
