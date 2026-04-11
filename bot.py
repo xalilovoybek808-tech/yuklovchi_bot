@@ -2,10 +2,12 @@ import os
 import re
 import glob
 import logging
+import threading
 from typing import Optional
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import yt_dlp
+from flask import Flask
 
 # ========== SOZLAMALAR ==========
 BOT_TOKEN = "8652149149:AAHKo1FFqXzq58KUeYyFi1yROZjvURAha54"
@@ -51,16 +53,11 @@ def download_video(url: str, platform: str) -> Optional[str]:
 
     ydl_opts = {
         "outtmpl": os.path.join(DOWNLOAD_DIR, "%(title).50s.%(ext)s"),
-        "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
-        "merge_output_format": "mp4",
+        "format": "best[ext=mp4]/best",
         "noplaylist": True,
         "quiet": True,
         "no_warnings": True,
         "socket_timeout": 30,
-        "postprocessors": [{
-            "key": "FFmpegVideoConvertor",
-            "preferedformat": "mp4",
-        }],
     }
 
     try:
@@ -296,6 +293,16 @@ def main():
     app.add_handler(CommandHandler("video", video_command))
     app.add_handler(CommandHandler("audio", audio_command))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_url))
+
+    # Render uchun health check web server
+    PORT = int(os.environ.get("PORT", 10000))
+    flask_app = Flask(__name__)
+
+    @flask_app.route("/")
+    def health():
+        return "OK", 200
+
+    threading.Thread(target=lambda: flask_app.run(host="0.0.0.0", port=PORT), daemon=True).start()
 
     print("✅ Bot ishga tushdi!")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
